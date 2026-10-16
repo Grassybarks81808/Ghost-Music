@@ -1,7 +1,11 @@
 name: Build Ghost Music
 
-# Linux job = fast compile/test feedback.
-# Windows job = the real Ghost-Music.exe plus a ready-to-run zip.
+# check-linux  : fast compile/test feedback + headless API smoke test.
+# build-windows: the real Ghost-Music.exe, bundled yt-dlp and a ready-to-run zip.
+#
+# Compiler output is also posted as a commit comment when something fails, so
+# the build can be diagnosed from anywhere (the raw job log is not always
+# reachable).
 
 on:
   push:
@@ -36,10 +40,16 @@ jobs:
           key: linux-check
 
       - name: cargo check
-        run: cargo check --all-targets
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo check --all-targets --message-format short 2>&1 | tee check.log
 
       - name: cargo test
-        run: cargo test
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --message-format short 2>&1 | tee -a check.log
 
       - name: Install yt-dlp and ffmpeg for the smoke test
         run: |
@@ -48,7 +58,34 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Run the app self test (headless HTTP API)
-        run: cargo run --release -- --selftest
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo run --release --message-format short -- --selftest 2>&1 | tee -a check.log
+
+      - name: Report build output as a commit comment
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "### Linux check failed"
+            echo '```'
+            grep -E "error(\[|:)|^[a-z].*:[0-9]+:[0-9]+: (error|warning)" check.log | head -80
+            echo '```'
+            echo "#### warnings"
+            echo '```'
+            grep -E "warning" check.log | head -25
+            echo '```'
+          } > report.md
+          jq -Rs '{body: .}' report.md > payload.json
+          curl -sS -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d @payload.json \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            | jq -r '.html_url // .message'
 
   build-windows:
     name: Build Windows app
@@ -66,17 +103,44 @@ jobs:
           key: windows-release
 
       - name: Build release executable
-        run: cargo build --release
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo build --release --message-format short 2>&1 | tee check.log
 
       - name: Self test the executable (headless API smoke test)
-        shell: pwsh
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          # yt-dlp is fetched below; the self test must pass without a window.
-          .\target\release\ghost-music.exe --version
-          .\target\release\ghost-music.exe --selftest
+          set -o pipefail
+          ./target/release/ghost-music.exe --version 2>&1 | tee -a check.log
+          ./target/release/ghost-music.exe --selftest 2>&1 | tee -a check.log
+
+      - name: Report build output as a commit comment
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "### Windows build failed"
+            echo '```'
+            grep -E "error(\[|:)|error\[" check.log | head -80
+            echo '```'
+            echo "#### warnings"
+            echo '```'
+            grep -E "warning" check.log | head -25
+            echo '```'
+          } > report.md
+          jq -Rs '{body: .}' report.md > payload.json
+          curl -sS -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d @payload.json \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            | jq -r '.html_url // .message'
 
       - name: Stage release files
+        if: success()
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
@@ -128,12 +192,14 @@ jobs:
           "@ | Set-Content -Encoding UTF8 dist/README-Windows.txt
 
       - name: Create zip
+        if: success()
         shell: pwsh
         run: |
           Compress-Archive -Path dist/* -DestinationPath Ghost-Music-Windows.zip -Force
           Get-ChildItem dist | Select-Object Name, Length
 
       - name: Upload build artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Ghost-Music-Windows
@@ -142,6 +208,7 @@ jobs:
             Ghost-Music-Windows.zip
 
       - name: Upload the resolved Cargo.lock (pinned dependency versions)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Cargo-lock
@@ -149,10 +216,26 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && success()
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          files: |
+            dist/*
+            Ghost-Music-Windows.zip
+
+      # A manual dispatch labels the run as a release so the app can be shipped
+      # without tagging (handy while iterating).
+      - name: Publish GitHub Release (manual dispatch)
+        if: github.event_name == 'workflow_dispatch' && success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}-build
+          name: Ghost Music build ${{ github.run_number }}
+          body: |
+            Automated Ghost Music build from `${{ github.sha }}`.
+            Download **Ghost-Music-Windows.zip** below, unzip it and run Ghost-Music.exe.
+            yt-dlp is bundled; ffmpeg is optional (MP3 conversion).
           files: |
             dist/*
             Ghost-Music-Windows.zip

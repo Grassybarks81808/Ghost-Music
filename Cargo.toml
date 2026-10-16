@@ -29,6 +29,8 @@ rodio = { version = "0.20.1", default-features = false, features = [
     "symphonia-vorbis",
     "symphonia-wav",
 ] }
+# HTTP: audio streaming with byte ranges, artwork, and the bundled API client.
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
 # Thumbnail downloading.
 ehttp = "0.5"
 # Thumbnail decoding (YouTube serves jpg/webp).

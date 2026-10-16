@@ -228,7 +228,7 @@ fn procedural_cover(seed_key: &str) -> ColorImage {
 }
 
 fn inside_ghost(x: f32, y: f32) -> bool {
-    use crate::ghost::{BODY, FEET};
+    use crate::ghost::BODY;
     // Body: point in convex polygon via cross products.
     let mut sign = 0.0;
     for index in 0..BODY.len() {

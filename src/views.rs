@@ -114,7 +114,6 @@ pub fn home(app: &mut App, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
                         let clicked = widgets::media_card(
                             ui,
                             &mut app.thumbs,
-                            ui.ctx(),
                             &track.title,
                             &track.artist,
                             &track.thumbnail,
@@ -142,7 +141,6 @@ pub fn home(app: &mut App, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
                     if widgets::media_card(
                         ui,
                         &mut app.thumbs,
-                        ui.ctx(),
                         &tile.title,
                         &tile.subtitle,
                         "",
@@ -232,7 +230,7 @@ fn show_rows(
         };
         row.removable = matches!(source, RowSource::Queue);
 
-        let response: RowResponse = widgets::track_row(ui, &mut app.thumbs, ui.ctx(), row);
+        let response: RowResponse = widgets::track_row(ui, &mut app.thumbs, row);
         apply_row_response(app, actions, &track, index, response, &source);
     }
 }

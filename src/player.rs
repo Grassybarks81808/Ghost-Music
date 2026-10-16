@@ -206,6 +206,9 @@ impl HttpSource {
     pub fn open(url: &str) -> Result<Self, String> {
         let response = agent()
             .get(url)
+            // Media must never be content-encoded: ranges and lengths depend on
+            // the bytes on the wire.
+            .set("Accept-Encoding", "identity")
             .call()
             .map_err(|error| format!("Could not open the audio stream: {error}"))?;
         if response.status() >= 400 {
@@ -234,6 +237,7 @@ impl HttpSource {
         self.reader = None;
         let response = agent()
             .get(&self.url)
+            .set("Accept-Encoding", "identity")
             .set("Range", &format!("bytes={offset}-"))
             .call()
             .map_err(|error| io::Error::other(format!("stream reconnect failed: {error}")))?;
@@ -308,6 +312,7 @@ mod tests {
     #[test]
     fn seek_maths_without_network() {
         let mut source = HttpSource {
+            // Port 1 is never listening, so reconnects fail fast and offline.
             url: "http://127.0.0.1:1/none".to_string(),
             reader: None,
             len: Some(1000),
@@ -316,8 +321,15 @@ mod tests {
         // Reading with no reader is a clean EOF.
         let mut buffer = [0u8; 8];
         assert_eq!(source.read(&mut buffer).unwrap(), 0);
-        // Seeking to the very end is allowed without a request.
+        // Seeking to the very end needs no request at all.
         assert_eq!(source.seek(SeekFrom::Start(1000)).unwrap(), 1000);
-        assert_eq!(source.seek(SeekFrom::End(-1000)).unwrap(), 0);
+        // Anything else reconnects, which must surface as an error, not a panic.
+        assert!(source.seek(SeekFrom::Start(500)).is_err());
+        // Unknown length: SeekFrom::End is reported as unsupported.
+        source.len = None;
+        assert!(matches!(
+            source.seek(SeekFrom::End(-1)),
+            Err(ref error) if error.kind() == io::ErrorKind::Unsupported
+        ));
     }
 }

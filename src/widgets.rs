@@ -70,12 +70,10 @@ impl<'a> RowTrack<'a> {
 }
 
 /// One row of a track list. The whole row is clickable, hover reveals actions.
-pub fn track_row(
-    ui: &mut Ui,
-    thumbs: &mut Thumbs,
-    ctx: &egui::Context,
-    row: RowTrack<'_>,
-) -> RowResponse {
+pub fn track_row(ui: &mut Ui, thumbs: &mut Thumbs, row: RowTrack<'_>) -> RowResponse {
+    // Cloning the context (an Arc) keeps the borrow of `ui` short so callers can
+    // pass `ui` and `thumbs` without borrow conflicts.
+    let ctx = ui.ctx().clone();
     let height = 58.0;
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
@@ -103,7 +101,7 @@ pub fn track_row(
         Pos2::new(rect.left() + 8.0, rect.top() + (height - 42.0) / 2.0),
         Vec2::splat(42.0),
     );
-    paint_artwork(ui, thumbs, ctx, art_rect, row.track, row.number, hovered, row.playing);
+    paint_artwork(ui, thumbs, &ctx, art_rect, row.track, row.number, hovered, row.playing);
 
     // Right hand side: duration + actions.
     let mut meta_right = rect.right() - 10.0;
@@ -742,7 +740,6 @@ pub fn chip(ui: &mut Ui, text: &str, active: bool) -> bool {
 pub fn media_card(
     ui: &mut Ui,
     thumbs: &mut Thumbs,
-    ctx: &egui::Context,
     title: &str,
     subtitle: &str,
     thumbnail: &str,
@@ -751,6 +748,7 @@ pub fn media_card(
     playing: bool,
     width: f32,
 ) -> bool {
+    let ctx = ui.ctx().clone();
     let art_size = width;
     let (rect, response) = ui.allocate_exact_size(
         Vec2::new(width, art_size + 48.0),
@@ -763,7 +761,7 @@ pub fn media_card(
     let texture = if thumbnail.is_empty() {
         None
     } else {
-        thumbs.get(ctx, thumbnail)
+        thumbs.get(&ctx, thumbnail)
     };
     match texture {
         Some(texture) => {
@@ -776,7 +774,7 @@ pub fn media_card(
             ));
         }
         None => {
-            let texture = thumbs.placeholder(ctx, seed_key);
+            let texture = thumbs.placeholder(&ctx, seed_key);
             ui.painter().image(
                 texture.id(),
                 art_rect,
