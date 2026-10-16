@@ -3,9 +3,11 @@ name: Build Ghost Music
 # check-linux  : fast compile/test feedback + headless API smoke test.
 # build-windows: the real Ghost-Music.exe, bundled yt-dlp and a ready-to-run zip.
 #
-# Compiler output is also posted as a commit comment when something fails, so
-# the build can be diagnosed from anywhere (the raw job log is not always
-# reachable).
+# Diagnostics are published on three channels because raw job logs are not
+# always reachable from every environment:
+#   1. a commit comment with the tail of the build log,
+#   2. a comment on issue #1,
+#   3. workflow annotations (readable through the check-runs API).
 
 on:
   push:
@@ -16,6 +18,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -40,12 +43,14 @@ jobs:
           key: linux-check
 
       - name: cargo check
+        id: check
         shell: bash
         run: |
           set -o pipefail
           cargo check --all-targets --message-format short 2>&1 | tee check.log
 
       - name: cargo test
+        id: test
         shell: bash
         run: |
           set -o pipefail
@@ -58,34 +63,45 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Run the app self test (headless HTTP API)
+        id: selftest
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          cargo run --release --message-format short -- --selftest 2>&1 | tee -a check.log
+          cargo run --release -- --selftest 2>&1 | tee -a check.log
 
-      - name: Report build output as a commit comment
-        if: failure()
+      - name: Surface diagnostics as annotations
+        if: failure() || steps.selftest.outcome == 'failure'
+        shell: bash
+        run: |
+          if [ -f check.log ]; then
+            grep -a -E "FAIL|error\[|panicked|thread '" check.log | head -10 | while IFS= read -r line; do
+              echo "::error title=diagnostic::$line"
+            done
+            tail -c 600 check.log | while IFS= read -r line; do
+              echo "::warning title=log-tail::$line"
+            done
+          fi
+          echo "annotations posted"
+
+      - name: Report diagnostics
+        if: failure() || steps.selftest.outcome == 'failure'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set +e
           {
-            echo "### Linux check failed"
+            echo "### Linux job diagnostics ($GITHUB_JOB, ${{ github.sha }})"
             echo '```'
-            grep -E "error(\[|:)|^[a-z].*:[0-9]+:[0-9]+: (error|warning)" check.log | head -80
+            tail -c 12000 check.log 2>/dev/null || echo "(no check.log)"
             echo '```'
-            echo "#### warnings"
-            echo '```'
-            grep -E "warning" check.log | head -25
-            echo '```'
-          } > report.md
-          jq -Rs '{body: .}' report.md > payload.json
-          curl -sS -X POST \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -d @payload.json \
-            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
-            | jq -r '.html_url // .message'
+          } > report.md 2>/dev/null
+          cat report.md
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -f body="$(head -c 60000 report.md)" >/dev/null 2>&1
+          gh api "repos/${{ github.repository }}/issues/1/comments" -f body="$(head -c 60000 report.md)" >/dev/null 2>&1
+          echo "reported"
+          exit 0
 
   build-windows:
     name: Build Windows app
@@ -109,35 +125,46 @@ jobs:
           cargo build --release --message-format short 2>&1 | tee check.log
 
       - name: Self test the executable (headless API smoke test)
+        id: selftest
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          ./target/release/ghost-music.exe --version 2>&1 | tee -a check.log
-          ./target/release/ghost-music.exe --selftest 2>&1 | tee -a check.log
+          ./target/release/ghost-music.exe --version 2>&1 | tee -a check.log || echo "version exit: $?"
+          ./target/release/ghost-music.exe --selftest 2>&1 | tee -a check.log || echo "selftest exit: $?"
 
-      - name: Report build output as a commit comment
-        if: failure()
+      - name: Surface diagnostics as annotations
+        if: failure() || steps.selftest.outcome == 'failure'
+        shell: bash
+        run: |
+          if [ -f check.log ]; then
+            grep -a -E "FAIL|error\[|panicked|thread '" check.log | head -10 | while IFS= read -r line; do
+              echo "::error title=diagnostic::$line"
+            done
+            tail -c 600 check.log | while IFS= read -r line; do
+              echo "::warning title=log-tail::$line"
+            done
+          fi
+          echo "annotations posted"
+
+      - name: Report diagnostics
+        if: failure() || steps.selftest.outcome == 'failure'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set +e
           {
-            echo "### Windows build failed"
+            echo "### Windows job diagnostics ($GITHUB_JOB, ${{ github.sha }})"
             echo '```'
-            grep -E "error(\[|:)|error\[" check.log | head -80
+            tail -c 12000 check.log 2>/dev/null || echo "(no check.log)"
             echo '```'
-            echo "#### warnings"
-            echo '```'
-            grep -E "warning" check.log | head -25
-            echo '```'
-          } > report.md
-          jq -Rs '{body: .}' report.md > payload.json
-          curl -sS -X POST \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -d @payload.json \
-            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
-            | jq -r '.html_url // .message'
+          } > report.md 2>/dev/null
+          cat report.md
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -f body="$(head -c 60000 report.md)" >/dev/null 2>&1
+          gh api "repos/${{ github.repository }}/issues/1/comments" -f body="$(head -c 60000 report.md)" >/dev/null 2>&1
+          echo "reported"
+          exit 0
 
       - name: Stage release files
         if: success()

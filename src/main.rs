@@ -59,9 +59,11 @@ fn main() -> eframe::Result<()> {
     }
 
     if has("--selftest") {
+        publish_idle_state(&engine);
         return run_selftest(engine, api);
     }
     if has("--api-only") || has("--headless") {
+        publish_idle_state(&engine);
         println!("{APP_NAME}: running without a window - press Ctrl+C to stop.");
         loop {
             std::thread::sleep(std::time::Duration::from_secs(3600));
@@ -92,6 +94,20 @@ fn main() -> eframe::Result<()> {
             Ok(Box::new(app::App::new(engine, api, library)))
         }),
     )
+}
+
+/// Headless runs have no window, so nothing would ever call `publish_state`.
+/// Publishing an idle snapshot here keeps `GET /player/state` meaningful.
+fn publish_idle_state(engine: &Engine) {
+    engine.publish_state(serde_json::json!({
+        "state": "idle",
+        "headless": true,
+        "app": APP_NAME,
+        "version": env!("CARGO_PKG_VERSION"),
+        "api_version": http_api::API_VERSION_INFO,
+        "queue": [],
+        "has_track": false,
+    }));
 }
 
 fn print_help() {
@@ -150,6 +166,18 @@ fn run_selftest(engine: Arc<Engine>, api: Option<Arc<http_api::ApiServer>>) -> e
 
     println!("{APP_NAME} self test");
     println!("-----------------");
+    println!(
+        "env: os={} exe={} cwd={}",
+        std::env::consts::OS,
+        std::env::current_exe().map(|path| path.display().to_string()).unwrap_or_default(),
+        std::env::current_dir().map(|path| path.display().to_string()).unwrap_or_default()
+    );
+    println!(
+        "env: yt-dlp={} ffmpeg={} cache={}",
+        tools::resolve("yt-dlp"),
+        tools::resolve("ffmpeg"),
+        tools::cache_dir().display()
+    );
 
     // Store round-trip (in memory: never touch the user's library here).
     let library = store::Library::default();
@@ -184,14 +212,18 @@ fn run_selftest(engine: Arc<Engine>, api: Option<Arc<http_api::ApiServer>>) -> e
             );
             let (status, body) = http_api::http_get(api.port, "/health").unwrap_or((0, String::new()));
             check("GET /health", status == 200 && body.contains(APP_NAME), false, &format!("HTTP {status}"));
-            let (status, body) =
-                http_api::http_get(api.port, "/player/state").unwrap_or((0, String::new()));
-            check(
-                "GET /player/state",
-                status == 200 && body.contains("state"),
-                false,
-                &format!("HTTP {status}"),
-            );
+            match http_api::http_get(api.port, "/player/state") {
+                Some((status, body)) => {
+                    let json_ok = body.contains("\"state\"") || body.contains("\"status\"");
+                    check(
+                        "GET /player/state",
+                        status == 200 && json_ok,
+                        false,
+                        &format!("HTTP {status}{}", if json_ok { "" } else { " (no state field)" }),
+                    );
+                }
+                None => check("GET /player/state", false, false, "no reply"),
+            }
             let (status, body) =
                 http_api::http_get(api.port, "/downloads").unwrap_or((0, String::new()));
             check("GET /downloads", status == 200, false, &format!("HTTP {status}"));
