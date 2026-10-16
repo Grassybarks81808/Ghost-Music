@@ -1,49 +1,116 @@
-# 👻 Ghost Music
+<div align="center">
+  <img src="assets/ghost-logo-256.png" width="132" alt="Ghost Music logo">
+  <h1>👻 Ghost Music</h1>
+  <p><b>A YouTube&nbsp;Music–style desktop player for Windows.</b><br>
+  Search, stream, queue, like and download music with a dark, red-accented UI — no browser required.</p>
+</div>
 
-Ghost Music is a Windows-first music and video discovery/player project written in Rust, with **yt-dlp** handling search metadata and media downloads.
+---
 
-## Current prototype
+## Download the Windows app
 
-- Dark, red-accented Ghost Music interface.
-- A 15-second startup animation: the ghost rotates, headphones drop into place, then audio-wave tones flow around it.
-- Search YouTube using `yt-dlp` and display titles, channel names, durations, and thumbnail URLs.
-- Download audio as MP3 or video as MP4 (where supported by the source and installed media tools).
-- A ghost-shaped playback progress marker in the player timeline.
-- Windows release builds through GitHub Actions.
+1. Open the [Releases page](../../releases) and grab **`Ghost-Music-Windows.zip`** (or the raw
+   `Ghost-Music.exe` if you already have `yt-dlp.exe`).
+2. Unzip it anywhere (keep the folder together — `yt-dlp.exe` ships next to the app).
+3. Double-click **`Ghost-Music.exe`**. That's it.
 
-> This is an early prototype. It does not include every feature of YouTube, and playback/metadata availability depends on yt-dlp and the source site.
+> `ffmpeg.exe` is optional but recommended: it enables MP3 conversion and HLS-only
+> tracks. Drop it next to `Ghost-Music.exe` ([build here](https://www.gyan.dev/ffmpeg/builds/)).
 
-## Build on Windows
+The app also checks `PATH`, so an existing `yt-dlp`/`ffmpeg` install works too.
 
-1. Install the stable Rust toolchain from [rustup.rs](https://rustup.rs/).
-2. Install [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases/latest) and put `yt-dlp.exe` on your PATH, or place it beside the app executable.
-3. For MP3 conversion, install [FFmpeg](https://ffmpeg.org/download.html) and put `ffmpeg.exe` on your PATH, or place it beside the app executable.
-4. In this repository, run:
+## What it does
 
-   ```powershell
-   cargo run --release
-   ```
+| | |
+|---|---|
+| 🔎 **Search** | YouTube search through `yt-dlp`, shown as a native list with artwork, artist, duration and views. |
+| ▶️ **Stream** | Plays straight from YouTube — nothing is written to disk while you listen. `mp3`, `m4a`, `opus/webm`, `flac` and `wav` are decoded in-process. |
+| 📃 **Queue** | YouTube-Music style queue: play next, add to queue, reorder, shuffle, repeat off/all/one, and "keep playing related tracks" when a mix ends. |
+| ♥ **Library** | Likes, playlists and the queue persist in `%APPDATA%\Ghost Music\library.json`. |
+| ⤓ **Downloads** | MP3 (audio) or MP4 (video) into `Downloads\Ghost Music`, with a live progress bar and the raw `yt-dlp` log. |
+| 🖥️ **Local API + web remote** | While the app runs it serves a small HTTP API on `127.0.0.1` *and* a remote-control web page — control the player from your phone's browser or from scripts. |
+| 💻 **Native & fast** | Rust + `egui`, one ~10 MB executable, starts instantly, no Electron, no browser engine. |
 
-## Search and downloads
+### Keyboard shortcuts
 
-Search uses yt-dlp's YouTube search extractor. Downloads are saved to the user's Downloads folder under `Ghost Music`.
+| Keys | Action |
+|---|---|
+| `Space` | play / pause |
+| `←` `→` | seek 5 s |
+| `↑` `↓` | volume |
+| `N` / `P` | next / previous |
+| `Ctrl+K` or `/` | focus the search box |
 
-- Audio: yt-dlp extracts audio and asks FFmpeg to convert it to MP3.
-- Video: yt-dlp downloads the best available video/audio combination and merges to MP4 when possible.
+## The local API (Ghost Music Connect)
 
-Only download content you have permission to save, and follow the source site's terms and applicable law.
+The API listens on an ephemeral **loopback-only** port (shown in *Settings* and as
+`API :port` in the title bar). Open the base URL in any browser for a phone-friendly
+remote control page.
 
-## Create a Windows release
+```bash
+curl http://127.0.0.1:PORT/health
+curl "http://127.0.0.1:PORT/search?q=lofi+beats&limit=10"
+curl -X POST http://127.0.0.1:PORT/player/play -d '{"q":"lofi beats"}'      # search & play
+curl -X POST http://127.0.0.1:PORT/player/play -d '{"id":"dQw4w9WgXcQ"}'    # play a video id
+curl -X POST http://127.0.0.1:PORT/player/pause
+curl -X POST http://127.0.0.1:PORT/player/seek  -d '{"seconds":42}'
+curl -X POST http://127.0.0.1:PORT/player/volume -d '{"volume":0.6}'
+curl -X POST http://127.0.0.1:PORT/download -d '{"q":"lofi beats","mode":"audio"}'
+curl http://127.0.0.1:PORT/downloads
+curl http://127.0.0.1:PORT/player/state
+# any <audio> tag works too:
+# <audio src="http://127.0.0.1:PORT/stream/dQw4w9WgXcQ" controls></audio>
+```
 
-Push a version tag such as `v0.1.0`. The workflow builds the Windows executable and attaches it to a GitHub Release. The executable expects `yt-dlp.exe` (and FFmpeg for MP3 conversion) alongside it or available on PATH.
+Run it without a window (for scripts/servers): `Ghost-Music.exe --api-only`.
 
-## Stack
+## Building from source
 
-- Rust
-- eframe / egui for the native desktop UI
-- yt-dlp as a child process for media search and download
-- GitHub Actions for Windows builds
+```bash
+# Windows (MSVC toolchain) - produces target/release/ghost-music.exe
+cargo build --release
 
-## License
+# run it
+cargo run --release
+```
 
-MIT — see [LICENSE](LICENSE).
+Requirements: Rust ≥ 1.76. `yt-dlp.exe` (required) and `ffmpeg.exe` (recommended) next
+to the executable, in `./bin`, or on `PATH`.
+
+Extras:
+
+```bash
+cargo test                                  # unit tests (progress parsing, covers, seek maths)
+cargo run --release -- --selftest           # headless checks: tools, API, store
+cargo run --release -- --api-only           # just the local API, no window
+python tools/make_icon.py                   # regenerate assets/ghost.ico from the SVG art
+```
+
+## How it works
+
+```
+src/
+  main.rs      CLI, window/icon setup, headless self test
+  app.rs       application state, yt-dlp job plumbing, playback control, window chrome
+  views.rs     Home / Explore / Library / Downloads / Settings screens
+  widgets.rs   track rows, cards, chips, vector transport glyphs
+  ghost.rs     the ghost mascot (splash animation, badges, seek handle)
+  engine.rs    yt-dlp workers (search, stream resolution, downloads) + shared state
+  player.rs    HTTP range reader + rodio/symphonia playback
+  http_api.rs  local HTTP API + web remote page
+  thumbs.rs    artwork download/decode/cache + procedural covers
+  store.rs     JSON persistence (%APPDATA%)
+  theme.rs     palette and egui theme
+```
+
+* Audio never touches the disk while streaming: the API server pipes the upstream
+  stream to the player, and `player.rs` re-requests with `Range:` headers when you seek.
+* HLS-only sources are remuxed once into the cache folder with ffmpeg.
+* Releasing: push a tag like `v0.2.0` - GitHub Actions builds `Ghost-Music.exe`,
+  bundles `yt-dlp.exe`, zips everything and attaches it to the release.
+
+## Licence & legal
+
+MIT — see [LICENSE](LICENSE). Ghost Music is a personal media player front-end for
+`yt-dlp`; it is not affiliated with, endorsed by or sponsored by YouTube/Google.
+Only download or stream content you have the rights to use.

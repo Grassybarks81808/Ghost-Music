@@ -1,11 +1,50 @@
 [package]
 name = "ghost-music"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "A Rust desktop music and video discovery app powered by yt-dlp"
+rust-version = "1.76"
+description = "A YouTube Music style desktop player for Windows, powered by yt-dlp"
 license = "MIT"
+repository = "https://github.com/Grassybarks81808/Ghost-Music"
+readme = "README.md"
+build = "build.rs"
 
 [dependencies]
-eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+eframe = { version = "0.31", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "wayland",
+    "x11",
+] }
+egui = "0.31"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Audio playback. Symphonia gives us mp3/m4a(aac)/flac/ogg/webm decoding so
+# download-free streaming works without any external codec installation.
+rodio = { version = "0.20.1", default-features = false, features = [
+    "symphonia-mp3",
+    "symphonia-aac",
+    "symphonia-isomp4",
+    "symphonia-flac",
+    "symphonia-vorbis",
+    "symphonia-wav",
+] }
+# Thumbnail downloading.
+ehttp = "0.5"
+# Thumbnail decoding (YouTube serves jpg/webp).
+image = { version = "0.25", default-features = false, features = [
+    "jpeg",
+    "png",
+    "webp",
+    "ico",
+] }
+
+[build-dependencies]
+# Embeds the icon + version info into the .exe on Windows.
+winresource = "0.1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

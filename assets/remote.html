@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ghost Music · Remote</title>
+<style>
+  :root {
+    --red: #f42b41;
+    --bg: #0b0c10;
+    --panel: #15171e;
+    --panel2: #1d2029;
+    --text: #f2f3f8;
+    --muted: #969bab;
+    --faint: #6c7382;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+    padding: 22px 22px 150px;
+  }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: .3px; }
+  header .ghost { font-size: 26px; }
+  header .tag { color: var(--faint); font-size: 12px; margin-left: auto; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input[type=search], input[type=text] {
+    flex: 1 1 320px; min-width: 200px; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid #2a2e3a; background: var(--panel); color: var(--text); font-size: 14px;
+  }
+  input:focus { outline: none; border-color: var(--red); }
+  button {
+    padding: 10px 16px; border-radius: 10px; border: 0; cursor: pointer;
+    background: var(--panel2); color: var(--text); font-size: 13px; font-weight: 600;
+  }
+  button:hover { background: #2c303c; }
+  button.primary { background: var(--red); color: #fff; }
+  button.primary:hover { background: #ff4a5e; }
+  .status { color: var(--faint); font-size: 12px; margin: 12px 0 4px; min-height: 16px; }
+  .results { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .item {
+    display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 10px;
+    background: var(--panel); cursor: pointer;
+  }
+  .item:hover { background: var(--panel2); }
+  .item img { width: 56px; height: 42px; object-fit: cover; border-radius: 6px; background: #241a20; }
+  .item .meta { min-width: 0; flex: 1; }
+  .item .title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .sub { color: var(--muted); font-size: 12px; }
+  .item .actions { display: flex; gap: 6px; }
+  .item .actions button { padding: 6px 10px; font-size: 12px; }
+  .empty { color: var(--faint); font-size: 13px; padding: 18px 4px; }
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: #10121a;
+    border-top: 1px solid #23262f; padding: 10px 18px 14px;
+  }
+  .bar .now { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .bar img { width: 44px; height: 44px; border-radius: 6px; background: #241a20; object-fit: cover; }
+  .bar .now .title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .now .sub { color: var(--muted); font-size: 12px; }
+  .seek { display: flex; align-items: center; gap: 10px; }
+  .seek input[type=range] { flex: 1; accent-color: var(--red); }
+  .seek .time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 42px; }
+  .controls { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .controls .spacer { flex: 1; }
+  .badge { font-size: 11px; color: var(--faint); }
+  a { color: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <span class="ghost">👻</span>
+  <h1>Ghost Music <span style="color:var(--faint);font-weight:400;font-size:13px">remote</span></h1>
+  <span class="tag" id="health">connecting…</span>
+</header>
+
+<div class="row">
+  <input id="q" type="search" placeholder="Search songs, artists or paste a YouTube link…" autofocus>
+  <button class="primary" id="go">Search</button>
+  <button id="queue-all" title="Queue all results and start playing">Queue all</button>
+</div>
+<div class="status" id="status"></div>
+<div class="results" id="results"></div>
+
+<div class="bar">
+  <div class="now">
+    <img id="np-art" alt="">
+    <div style="min-width:0;flex:1">
+      <div class="title" id="np-title">Nothing playing</div>
+      <div class="sub" id="np-artist">Start something from the list above</div>
+    </div>
+    <div class="badge" id="np-state"></div>
+  </div>
+  <div class="seek">
+    <span class="time" id="pos">0:00</span>
+    <input type="range" id="seek" min="0" max="1000" value="0" step="1">
+    <span class="time" id="dur">—:—</span>
+  </div>
+  <div class="controls">
+    <button id="prev" title="Previous">⏮</button>
+    <button class="primary" id="toggle" title="Play / pause">▶</button>
+    <button id="next" title="Next">⏭</button>
+    <button id="shuffle" title="Shuffle the queue">🔀</button>
+    <button id="repeat" title="Repeat mode">🔁</button>
+    <span class="spacer"></span>
+    <span class="badge">volume</span>
+    <input type="range" id="volume" min="0" max="100" value="80" style="width:120px;accent-color:var(--red)">
+    <a class="badge" id="downloads-link" href="/downloads" target="_blank">downloads</a>
+    <a class="badge" href="/health" target="_blank">health</a>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let dragging = false;
+
+async function api(path, options) {
+  const response = await fetch(path, options);
+  const text = await response.text();
+  try { return JSON.parse(text); } catch (e) { return { raw: text, status: response.status }; }
+}
+
+function post(path, body) {
+  return api(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {})
+  });
+}
+
+function clock(seconds) {
+  if (seconds === null || seconds === undefined || !isFinite(seconds)) return "—:—";
+  seconds = Math.max(0, Math.round(seconds));
+  const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
+  return h > 0 ? h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0")
+               : m + ":" + String(s).padStart(2, "0");
+}
+
+function thumbFor(item) { return item.thumbnail || ""; }
+
+function renderResults(data) {
+  const box = $("results");
+  box.innerHTML = "";
+  if (!data.results || data.results.length === 0) {
+    box.innerHTML = '<div class="empty">No results. Try another search.</div>';
+    return;
+  }
+  data.results.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "item";
+    const art = document.createElement("img");
+    art.loading = "lazy";
+    art.src = item.thumbnail ? "/thumb/x?u=" + encodeURIComponent(item.thumbnail) : "";
+    art.onerror = () => { art.style.visibility = "hidden"; };
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = item.title;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = [item.artist, item.duration_text, item.views].filter(Boolean).join(" · ");
+    meta.append(title, sub);
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const play = document.createElement("button");
+    play.textContent = "▶ Play";
+    play.onclick = (event) => { event.stopPropagation(); playTrack(item); };
+    const queue = document.createElement("button");
+    queue.textContent = "＋ Queue";
+    queue.onclick = (event) => {
+      event.stopPropagation();
+      post("/player/play", { track: item }).then(() => setStatus("Added “" + item.title + "” to the queue."));
+    };
+    const download = document.createElement("button");
+    download.textContent = "⤓";
+    download.title = "Download MP3";
+    download.onclick = (event) => {
+      event.stopPropagation();
+      post("/download", { track: item, mode: "audio" }).then((r) =>
+        setStatus(r.queued ? "Downloading “" + item.title + "”…" : (r.error || "Download failed")));
+    };
+    actions.append(play, queue, download);
+
+    row.append(art, meta, actions);
+    row.onclick = () => playTrack(item);
+    box.append(row);
+  });
+}
+
+function playTrack(item) {
+  post("/player/play", { track: item }).then((r) => {
+    if (r.error) { setStatus(r.error); return; }
+    setStatus("Playing “" + item.title + "”");
+    refresh();
+  });
+}
+
+function playAll() {
+  const text = $("q").value.trim();
+  if (!text) return;
+  post("/player/play", { q: text, queue: true }).then((r) => {
+    setStatus(r.error ? r.error : "Queued results for “" + text + "”");
+    refresh();
+  });
+}
+
+function setStatus(message) { $("status").textContent = message || ""; }
+
+async function search() {
+  const text = $("q").value.trim();
+  if (!text) return;
+  setStatus("Searching…");
+  $("results").innerHTML = "";
+  const data = await api("/search?limit=25&q=" + encodeURIComponent(text));
+  if (data.error) { setStatus(data.error); return; }
+  setStatus(data.count + " results for “" + text + "”");
+  renderResults(data);
+}
+
+async function refresh() {
+  const state = await api("/player/state");
+  if (state.error) return;
+  const track = state.track;
+  $("np-title").textContent = track ? track.title : "Nothing playing";
+  $("np-artist").textContent = track ? (track.artist || "Ghost Music") : "Start something from the list above";
+  const art = $("np-art");
+  if (track && track.thumbnail) {
+    art.src = "/thumb/x?u=" + encodeURIComponent(track.thumbnail);
+    art.style.visibility = "visible";
+  } else {
+    art.removeAttribute("src");
+  }
+  $("np-state").textContent = state.state || "";
+  $("toggle").textContent = state.state === "playing" ? "❚❚" : "▶";
+  const duration = state.duration || (track && track.duration) || null;
+  $("dur").textContent = clock(duration);
+  $("pos").textContent = clock(state.position || 0);
+  if (!dragging && duration) {
+    $("seek").value = Math.round(((state.position || 0) / duration) * 1000);
+  }
+  $("shuffle").style.color = state.shuffle ? "var(--red)" : "";
+  $("repeat").style.color = state.repeat && state.repeat !== "off" ? "var(--red)" : "";
+}
+
+async function health() {
+  const data = await api("/health");
+  if (data.error) { $("health").textContent = "API offline"; return; }
+  $("health").textContent = "v" + data.version + " · yt-dlp " + (data.yt_dlp || "missing") +
+    " · ffmpeg " + (data.ffmpeg || "missing");
+}
+
+$("go").onclick = search;
+$("q").addEventListener("keydown", (event) => { if (event.key === "Enter") search(); });
+$("queue-all").onclick = playAll;
+$("toggle").onclick = () => post("/player/toggle").then(refresh);
+$("next").onclick = () => post("/player/next").then(refresh);
+$("prev").onclick = () => post("/player/prev").then(refresh);
+$("shuffle").onclick = () => post("/player/shuffle").then(refresh);
+$("repeat").onclick = () => post("/player/repeat").then(refresh);
+$("volume").oninput = (event) => post("/player/volume", { volume: event.target.value / 100 });
+
+const seek = $("seek");
+seek.addEventListener("pointerdown", () => { dragging = true; });
+seek.addEventListener("pointerup", () => { dragging = false; });
+seek.addEventListener("change", () => {
+  api("/player/state").then((state) => {
+    const duration = state.duration || (state.track && state.track.duration);
+    if (duration) post("/player/seek", { seconds: (seek.value / 1000) * duration }).then(refresh);
+  });
+});
+
+health();
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

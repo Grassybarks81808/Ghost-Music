@@ -1,16 +1,57 @@
-name: Build Windows app
+name: Build Ghost Music
+
+# Linux job = fast compile/test feedback.
+# Windows job = the real Ghost-Music.exe plus a ready-to-run zip.
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: ["main", "arena/**"]
+    tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
+  check-linux:
+    name: Check & test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install ALSA development files (cpal)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: linux-check
+
+      - name: cargo check
+        run: cargo check --all-targets
+
+      - name: cargo test
+        run: cargo test
+
+      - name: Install yt-dlp and ffmpeg for the smoke test
+        run: |
+          python3 -m pip install --upgrade --user yt-dlp || true
+          sudo apt-get install -y ffmpeg || true
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Run the app self test (headless HTTP API)
+        run: cargo run --release -- --selftest
+
   build-windows:
+    name: Build Windows app
     runs-on: windows-latest
     steps:
       - name: Check out source
@@ -21,29 +62,97 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-release
 
       - name: Build release executable
         run: cargo build --release
+
+      - name: Self test the executable (headless API smoke test)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          # yt-dlp is fetched below; the self test must pass without a window.
+          .\target\release\ghost-music.exe --version
+          .\target\release\ghost-music.exe --selftest
 
       - name: Stage release files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item target/release/ghost-music.exe dist/Ghost-Music.exe
+
+          # Bundle yt-dlp so search, streaming and downloads work out of the box.
+          $ytdlp = "dist/yt-dlp.exe"
+          try {
+            Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $ytdlp -UseBasicParsing
+            Write-Host "Bundled yt-dlp: $((Get-Item $ytdlp).Length) bytes"
+          } catch {
+            Write-Warning "Could not download yt-dlp.exe: $_"
+          }
+
           @"
-          Ghost Music requires yt-dlp.exe beside the app or available on PATH.
-          FFmpeg is recommended and required for MP3 conversion.
-          "@ | Set-Content dist/README-Windows.txt
+          Ghost Music $((Get-Item dist/Ghost-Music.exe).VersionInfo.FileVersion)
+          ===============================================================
+
+          HOW TO RUN
+          1. Unzip this folder somewhere permanent (not inside the zip).
+          2. Double-click Ghost-Music.exe.
+
+          MEDIA TOOLS
+          - yt-dlp.exe is included in this folder; Ghost Music finds it next to the
+            executable automatically. Update it any time by replacing the file with
+            a newer one from https://github.com/yt-dlp/yt-dlp/releases/latest
+          - ffmpeg.exe is optional but recommended. It adds MP3 conversion and
+            HLS-only streams. Get it from https://www.gyan.dev/ffmpeg/builds/
+            (ffmpeg-release-essentials.zip) and copy ffmpeg.exe next to
+            Ghost-Music.exe.
+
+          WHAT YOU GET
+          - YouTube Music style home / explore / library / queue screens
+          - Playback of millions of songs straight from YouTube (no download needed)
+          - MP3 or MP4 downloads into %USERPROFILE%\Downloads\Ghost Music
+          - A local HTTP API + web remote: while the app runs, open
+            http://127.0.0.1:PORT (the port and URL are shown in Settings)
+
+          SHORTCUTS
+          Space play/pause - Left/Right seek - Up/Down volume - N/P next/prev
+          Ctrl+K focus search
+
+          FILES
+          Settings, likes and playlists: %APPDATA%\Ghost Music\library.json
+          Stream cache:                  %LOCALAPPDATA%\Ghost Music\cache
+
+          Please only download or stream content you have the rights to use.
+          Ghost Music is MIT licensed and is not affiliated with YouTube.
+          "@ | Set-Content -Encoding UTF8 dist/README-Windows.txt
+
+      - name: Create zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/* -DestinationPath Ghost-Music-Windows.zip -Force
+          Get-ChildItem dist | Select-Object Name, Length
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: Ghost-Music-Windows
-          path: dist/*
+          path: |
+            dist/*
+            Ghost-Music-Windows.zip
+
+      - name: Upload the resolved Cargo.lock (pinned dependency versions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cargo-lock
+          path: Cargo.lock
+          if-no-files-found: ignore
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: dist/*
+          files: |
+            dist/*
+            Ghost-Music-Windows.zip
