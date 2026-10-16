@@ -68,6 +68,17 @@ curl http://127.0.0.1:PORT/player/state
 
 Run it without a window (for scripts/servers): `Ghost-Music.exe --api-only`.
 
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| *"Windows protected your PC"* on first launch | Not code-signed: **More info → Run anyway**. |
+| A track won't play, or `Sign in to confirm you're not a bot` | YouTube changed something: replace `yt-dlp.exe` with the latest build from [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases/latest) (same folder as `Ghost-Music.exe`). |
+| No sound at all | Windows needs an active output device; the exact error is shown in the status bar and in `Ghost-Music.exe --version`. |
+| Downloads end with a conversion error | Install `ffmpeg.exe` next to the app (needed for MP3 and for merging). |
+| `yt-dlp was not found` | Keep `yt-dlp.exe` in the same folder as `Ghost-Music.exe`, or put it in `./bin`, or on `PATH`. |
+| Something looks broken | Run `Ghost-Music.exe --selftest` in a terminal and send the output — it checks the API, the tools and the audio device. |
+
 ## Building from source
 
 ```bash
