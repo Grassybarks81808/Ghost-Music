@@ -1,0 +1,11 @@
+[package]
+name = "ghost-music"
+version = "0.1.0"
+edition = "2021"
+description = "A Rust desktop music and video discovery app powered by yt-dlp"
+license = "MIT"
+
+[dependencies]
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
