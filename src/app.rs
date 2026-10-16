@@ -76,7 +76,6 @@ pub struct DownloadItem {
 /// Everything the user can trigger; views collect these and `App` applies them.
 pub enum Action {
     Search(String),
-    SetView(View),
     PlayTrack(Track),
     /// Play a list starting at an index (used by "play all" buttons).
     PlayList(Vec<Track>, usize),
@@ -87,15 +86,12 @@ pub enum Action {
     ToggleQueue(Track),
     RemoveFromQueue(usize),
     RemoveFromLiked(String),
-    MoveQueue { from: usize, to: usize },
     PlayQueueIndex(usize),
     AddToPlaylist { name: String, track: Track },
     RemovePlaylist(String),
     CreatePlaylist(String),
     SetDownloadDir(String),
     SetDownloadMode(usize),
-    ToggleShuffle,
-    CycleRepeat,
     ClearRecents,
     PlaySeed(crate::model::Tile),
 }
@@ -1025,7 +1021,7 @@ impl App {
         ui.painter().rect_stroke(
             art,
             egui::CornerRadius::same(8),
-            egui::Stroke::new(1.0, Color32::from_black_alpha(80)),
+            egui::Stroke::new(1.0_f32, Color32::from_black_alpha(80)),
             egui::StrokeKind::Inside,
         );
         let text_left = art.right() + 12.0;
@@ -1129,7 +1125,6 @@ impl App {
     pub fn apply(&mut self, action: Action) {
         match action {
             Action::Search(query) => self.start_search(&query),
-            Action::SetView(view) => self.view = view,
             Action::PlayTrack(track) => self.enqueue_and_play(track),
             Action::PlayList(tracks, index) => self.play_list(tracks, index),
             Action::QueueNext(track) => {
@@ -1184,7 +1179,6 @@ impl App {
                 }
             }
             Action::RemoveFromLiked(id) => self.library.liked.retain(|track| track.id != id),
-            Action::MoveQueue { from, to } => self.library.move_in_queue(from, to),
             Action::PlayQueueIndex(index) => self.play_queue_index(index),
             Action::AddToPlaylist { name, track } => {
                 let added = self.library.add_to_playlist(&name, &track);
@@ -1223,8 +1217,6 @@ impl App {
                 self.set_status(StatusKind::Good, format!("Downloads will be saved to {dir}."));
             }
             Action::SetDownloadMode(mode) => self.library.download_mode = mode,
-            Action::ToggleShuffle => self.shuffle = !self.shuffle,
-            Action::CycleRepeat => self.repeat = self.repeat.next(),
             Action::ClearRecents => {
                 self.library.recent_searches.clear();
                 self.recent.clear();
@@ -1270,7 +1262,7 @@ impl App {
                 egui::Frame::NONE
                     .fill(CHROME)
                     .inner_margin(egui::Margin::symmetric(14, 10))
-                    .stroke(egui::Stroke::new(1.0, HAIRLINE)),
+                    .stroke(egui::Stroke::new(1.0_f32, HAIRLINE)),
             )
             .show(ctx, |ui| self.top_bar(ui));
 
@@ -1280,7 +1272,7 @@ impl App {
                 egui::Frame::NONE
                     .fill(CHROME)
                     .inner_margin(egui::Margin::symmetric(12, 6))
-                    .stroke(egui::Stroke::new(1.0, HAIRLINE)),
+                    .stroke(egui::Stroke::new(1.0_f32, HAIRLINE)),
             )
             .show(ctx, |ui| self.player_bar(ui));
 
@@ -1291,7 +1283,7 @@ impl App {
                 egui::Frame::NONE
                     .fill(CHROME)
                     .inner_margin(egui::Margin::symmetric(10, 8))
-                    .stroke(egui::Stroke::new(1.0, HAIRLINE)),
+                    .stroke(egui::Stroke::new(1.0_f32, HAIRLINE)),
             )
             .show(ctx, |ui| self.sidebar(ui));
 
@@ -1321,13 +1313,14 @@ impl App {
             return;
         }
         let mut open = true;
+        let mut shuffle_requested = false;
         egui::SidePanel::right("ghost-queue")
             .default_width(268.0)
             .frame(
                 egui::Frame::NONE
                     .fill(PANEL_SUNKEN)
                     .inner_margin(egui::Margin::symmetric(12, 10))
-                    .stroke(egui::Stroke::new(1.0, HAIRLINE)),
+                    .stroke(egui::Stroke::new(1.0_f32, HAIRLINE)),
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
@@ -1347,7 +1340,6 @@ impl App {
                     });
                 });
                 ui.add_space(6.0);
-                let mut shuffle_requested = false;
                 let mut move_request: Option<(usize, usize)> = None;
                 let mut play_request: Option<usize> = None;
                 let mut remove_request: Option<usize> = None;

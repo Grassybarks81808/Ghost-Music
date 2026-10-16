@@ -7,7 +7,7 @@ use egui::{Align, Color32, FontId, Layout, Pos2, RichText, Sense, Vec2};
 use crate::app::{Action, App};
 use crate::model::{self, Track};
 use crate::theme::*;
-use crate::widgets::{self, Glyph, RowResponse, RowTrack};
+use crate::widgets::{self, RowResponse, RowTrack};
 use crate::tools;
 
 /// Width of one card in the responsive grids.
@@ -260,8 +260,13 @@ fn apply_row_response(
         if matches!(source, RowSource::Queue) {
             // Already queued: this press removes it from the queue.
             actions.push(Action::RemoveFromQueue(index));
+        } else if app.library.is_in_playlist(&track.id) {
+            if let Some(position) = app.library.playlist.iter().position(|entry| entry.id == track.id)
+            {
+                actions.push(Action::RemoveFromQueue(position));
+            }
         } else {
-            actions.push(Action::QueueLast(track.clone()));
+            actions.push(Action::ToggleQueue(track.clone()));
         }
     }
     if response.play_next {
@@ -479,7 +484,7 @@ pub fn library(app: &mut App, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
 // Downloads
 // ---------------------------------------------------------------------------
 
-pub fn downloads(app: &mut App, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
+pub fn downloads(app: &mut App, ui: &mut egui::Ui, _actions: &mut Vec<Action>) {
     ui.horizontal(|ui| {
         ui.label(RichText::new("Downloads").size(20.0).strong().color(TEXT));
         ui.label(
@@ -535,6 +540,13 @@ pub fn downloads(app: &mut App, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
                                     ("failed", RED)
                                 };
                                 ui.label(RichText::new(label).size(11.0).color(color));
+                                if running {
+                                    ui.label(
+                                        RichText::new(format!("{:.0}s", item.started.elapsed().as_secs_f32()))
+                                            .size(11.0)
+                                            .color(FAINT),
+                                    );
+                                }
                             });
                         });
                         ui.add_space(2.0);

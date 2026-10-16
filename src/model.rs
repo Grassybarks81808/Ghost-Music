@@ -172,8 +172,6 @@ pub struct Tile {
     pub subtitle: String,
     #[serde(default)]
     pub thumbnail: String,
-    #[serde(default)]
-    pub seed: u64,
 }
 
 /// Small deterministic hash so a seed tile always gets the same colours.
@@ -214,7 +212,6 @@ pub fn seed_tiles() -> Vec<Tile> {
             title: format!("{emoji}  {label}"),
             subtitle: "Tap to start a mix".to_string(),
             thumbnail: String::new(),
-            seed: fnv1a(label.as_bytes()),
         })
         .collect()
 }

@@ -26,18 +26,6 @@ pub struct RowResponse {
     pub secondary: bool,
 }
 
-impl RowResponse {
-    pub fn any(&self) -> bool {
-        self.activate
-            || self.add_to_queue
-            || self.play_next
-            || self.download
-            || self.like
-            || self.remove
-            || self.add_to_playlist
-    }
-}
-
 pub struct RowTrack<'a> {
     pub track: &'a Track,
     /// Overrides the shown duration (used for local files).
@@ -271,7 +259,7 @@ fn paint_artwork(
         }
     }
     ui.painter()
-        .rect_stroke(rect, radius, Stroke::new(1.0, Color32::from_black_alpha(90)), egui::StrokeKind::Inside);
+        .rect_stroke(rect, radius, Stroke::new(1.0_f32, Color32::from_black_alpha(90)), egui::StrokeKind::Inside);
 
     if hovered && number.is_none() {
         ui.painter()
@@ -398,7 +386,7 @@ pub fn transport_glyph(painter: &egui::Painter, center: Pos2, size: f32, glyph: 
             );
         }
         Glyph::Shuffle => {
-            let mut path = |points: [(f32, f32); 3]| {
+            let path = |points: [(f32, f32); 3]| {
                 painter.add(Shape::line(
                     points
                         .iter()
@@ -483,7 +471,7 @@ pub fn transport_glyph(painter: &egui::Painter, center: Pos2, size: f32, glyph: 
                                 )
                             })
                             .collect::<Vec<_>>(),
-                        Stroke::new(1.6, color),
+                        Stroke::new(1.6_f32, color),
                     ));
                 }
             } else {
@@ -814,7 +802,7 @@ pub fn media_card(
     painter.rect_stroke(
         art_rect,
         CornerRadius::ZERO,
-        Stroke::new(1.0, Color32::from_black_alpha(80)),
+        Stroke::new(1.0_f32, Color32::from_black_alpha(80)),
         egui::StrokeKind::Inside,
     );
 
@@ -848,24 +836,6 @@ pub fn section_header(ui: &mut Ui, title: &str, hint: &str) {
     });
 }
 
-/// Centred "playing now" indicator drawn over a card.
-pub fn now_playing_badge(painter: &egui::Painter, rect: Rect) {
-    let bar_width = 3.0;
-    let base = rect.bottom() - 10.0;
-    for index in 0..4 {
-        let x = rect.left() + 10.0 + index as f32 * (bar_width + 4.0);
-        let height = 6.0 + (index as f32 * 2.3).sin().abs() * 10.0;
-        painter.rect_filled(
-            Rect::from_min_max(
-                Pos2::new(x, base - height),
-                Pos2::new(x + bar_width, base),
-            ),
-            1.5,
-            RED,
-        );
-    }
-}
-
 /// A subtle "ghost" watermark used behind empty states.
 pub fn empty_state(ui: &mut Ui, title: &str, subtitle: &str) {
     ui.vertical_centered(|ui| {
@@ -878,12 +848,4 @@ pub fn empty_state(ui: &mut Ui, title: &str, subtitle: &str) {
         ui.label(RichText::new(title).size(15.0).strong().color(TEXT));
         ui.label(RichText::new(subtitle).size(12.0).color(MUTED));
     });
-}
-
-/// Rounded panel used for the player bar and side panels.
-pub fn panel_frame(fill: Color32) -> egui::Frame {
-    egui::Frame::new()
-        .fill(fill)
-        .inner_margin(egui::Margin::symmetric(10, 8))
-        .corner_radius(CornerRadius::same(10))
 }

@@ -80,11 +80,13 @@ impl Player {
     /// Attach a freshly opened decoder and start playing.
     pub fn start(&mut self, key: &str, track: Track, decoder: RemoteDecoder) -> Result<(), String> {
         self.loading = None;
-        let Some(handle) = self.handle.as_ref() else {
-            return Err("No audio output device was found.".to_string());
+        // Clone the (Arc-backed) handle first: `stop()` needs `&mut self`.
+        let handle = match self.handle.clone() {
+            Some(handle) => handle,
+            None => return Err("No audio output device was found.".to_string()),
         };
         self.stop();
-        let sink = Sink::try_new(handle).map_err(|error| format!("Could not start audio: {error}"))?;
+        let sink = Sink::try_new(&handle).map_err(|error| format!("Could not start audio: {error}"))?;
         sink.set_volume(self.volume);
         sink.append(decoder);
         sink.play();
@@ -226,10 +228,6 @@ impl HttpSource {
             len,
             pos: 0,
         })
-    }
-
-    pub fn len(&self) -> Option<u64> {
-        self.len
     }
 
     /// Drop the current body and re-request from `offset`.

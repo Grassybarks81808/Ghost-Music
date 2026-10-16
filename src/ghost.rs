@@ -208,7 +208,7 @@ impl Splash {
                 painter.circle_stroke(
                     center,
                     halo_radius + 6.0,
-                    Stroke::new(1.5, Color32::from_rgba_unmultiplied(RED.r(), RED.g(), RED.b(), 90)),
+                    Stroke::new(1.5_f32, Color32::from_rgba_unmultiplied(RED.r(), RED.g(), RED.b(), 90)),
                 );
                 for spoke in 0..36 {
                     let angle = spoke as f32 / 36.0 * std::f32::consts::TAU + time * 1.6;
@@ -221,7 +221,7 @@ impl Splash {
                             center + Vec2::new(angle.cos(), angle.sin()) * inner,
                             center + Vec2::new(angle.cos(), angle.sin()) * outer,
                         ],
-                        Stroke::new(2.0, color),
+                        Stroke::new(2.0_f32, color),
                     ));
                 }
 

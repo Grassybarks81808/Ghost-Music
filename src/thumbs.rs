@@ -107,11 +107,13 @@ impl Thumbs {
         }
         let url = url.to_string();
         let sender = self.sender.clone();
-        ehttp::fetch(ehttp::Request::get(url.clone()), move |response| {
-            let result = if response.ok {
-                decode(&response.bytes).ok_or_else(|| "decode failed".to_string())
-            } else {
-                Err(format!("http {}", response.status))
+        ehttp::fetch(ehttp::Request::get(url.clone()), move |outcome| {
+            let result = match outcome {
+                Ok(response) if response.ok => {
+                    decode(&response.bytes).ok_or_else(|| "decode failed".to_string())
+                }
+                Ok(response) => Err(format!("http {}", response.status)),
+                Err(error) => Err(error),
             };
             let _ = sender.send(Loaded { url, result });
         });

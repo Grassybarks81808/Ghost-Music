@@ -11,6 +11,7 @@
 //! GET  /thumb/{id}?u=...     proxies artwork (avoids CORS when embedded)
 //! GET  /player/state         published player state
 //! POST /player/play          {id | url | track | q, queue?}
+//! POST /player/queue         {tracks | track | id | url | q, next?}
 //! POST /player/pause|resume|toggle|next|prev|stop|seek|volume|shuffle|repeat
 //! GET  /downloads            files in the download folder
 //! POST /download             {id | url | q, mode: "audio" | "video"}
@@ -181,6 +182,10 @@ impl ApiServer {
                 let value = serde_json::from_slice(&request.body).unwrap_or(Value::Null);
                 self.play(&mut stream, value)
             }
+            ("POST", "/player/queue") => {
+                let value = serde_json::from_slice(&request.body).unwrap_or(Value::Null);
+                self.queue(&mut stream, value)
+            }
             ("POST", "/player/pause") => self.command(&mut stream, ApiCommand::Pause),
             ("POST", "/player/resume") => self.command(&mut stream, ApiCommand::Resume),
             ("POST", "/player/toggle") => self.command(&mut stream, ApiCommand::Toggle),
@@ -278,6 +283,7 @@ impl ApiServer {
                 "GET /thumb/{id}?u=",
                 "GET /player/state",
                 "POST /player/play",
+                "POST /player/queue",
                 "POST /player/pause",
                 "POST /player/resume",
                 "POST /player/toggle",
@@ -357,6 +363,47 @@ impl ApiServer {
         } else {
             self.json(stream, 400, json!({ "error": "provide one of: track, id, url, q" }))
         }
+    }
+
+    /// `POST /player/queue` - add tracks to the queue without playing them.
+    fn queue(&self, stream: &mut TcpStream, value: Value) -> std::io::Result<()> {
+        let mut tracks: Vec<Track> = Vec::new();
+        if let Some(list) = value.get("tracks").and_then(Value::as_array) {
+            tracks.extend(list.iter().filter_map(track_from_value));
+        } else if let Some(track) = value.get("track").and_then(track_from_value) {
+            tracks.push(track);
+        } else if let Some(id) = value.get("id").and_then(Value::as_str) {
+            tracks.push(Track {
+                id: id.to_string(),
+                title: value.get("title").and_then(Value::as_str).unwrap_or(id).to_string(),
+                artist: String::new(),
+                duration: None,
+                url: format!("https://www.youtube.com/watch?v={id}"),
+                thumbnail: String::new(),
+            });
+        } else if let Some(url) = value.get("url").and_then(Value::as_str) {
+            tracks.push(Track {
+                id: url.to_string(),
+                title: url.to_string(),
+                artist: String::new(),
+                duration: None,
+                url: url.to_string(),
+                thumbnail: String::new(),
+            });
+        } else if let Some(text) = value.get("q").and_then(Value::as_str) {
+            match engine::search_sync(text, value.get("limit").and_then(Value::as_u64).unwrap_or(10) as usize) {
+                Ok(entries) => tracks.extend(entries.iter().map(Track::from_entry)),
+                Err(error) => return self.json(stream, 502, json!({ "error": error })),
+            }
+        }
+
+        if tracks.is_empty() {
+            return self.json(stream, 400, json!({ "error": "provide one of: tracks, track, id, url, q" }));
+        }
+        let count = tracks.len();
+        let next = value.get("next").and_then(Value::as_bool).unwrap_or(false);
+        self.engine.push_command(ApiCommand::Enqueue { tracks, next });
+        self.json(stream, 202, json!({ "queued": "enqueue", "count": count, "next": next }))
     }
 
     fn command(&self, stream: &mut TcpStream, command: ApiCommand) -> std::io::Result<()> {

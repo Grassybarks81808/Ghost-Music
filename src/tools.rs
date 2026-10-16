@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Executable name, with `.exe` on Windows.
 pub fn exe(name: &str) -> String {
@@ -185,15 +185,3 @@ pub fn join_template(dir: &Path, template: &str) -> String {
     dir.join(template).to_string_lossy().to_string()
 }
 
-/// Small helper so a search that hangs forever cannot block a worker thread.
-pub struct Stopwatch(Instant);
-
-impl Stopwatch {
-    pub fn start() -> Self {
-        Self(Instant::now())
-    }
-
-    pub fn elapsed(&self) -> Duration {
-        self.0.elapsed()
-    }
-}

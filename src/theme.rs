@@ -37,34 +37,34 @@ pub fn apply(ctx: &egui::Context) {
     visuals.code_bg_color = PANEL_SUNKEN;
     visuals.hyperlink_color = RED;
     visuals.selection.bg_fill = RED_DIM;
-    visuals.selection.stroke = Stroke::new(1.0, TEXT);
-    visuals.window_stroke = Stroke::new(1.0, HAIRLINE);
+    visuals.selection.stroke = Stroke::new(1.0_f32, TEXT);
+    visuals.window_stroke = Stroke::new(1.0_f32, HAIRLINE);
     visuals.window_corner_radius = CornerRadius::same(12);
     visuals.slider_trailing_fill = true;
 
     let radius = CornerRadius::same(8);
     visuals.widgets.noninteractive.bg_fill = PANEL;
     visuals.widgets.noninteractive.weak_bg_fill = PANEL;
-    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, HAIRLINE);
-    visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, MUTED);
+    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, HAIRLINE);
+    visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, MUTED);
     visuals.widgets.noninteractive.corner_radius = radius;
 
     visuals.widgets.inactive.bg_fill = PANEL_HOVER;
     visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(27, 29, 37);
     visuals.widgets.inactive.bg_stroke = Stroke::NONE;
-    visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, TEXT);
+    visuals.widgets.inactive.fg_stroke = Stroke::new(1.0_f32, TEXT);
     visuals.widgets.inactive.corner_radius = radius;
 
     visuals.widgets.hovered.bg_fill = Color32::from_rgb(40, 43, 54);
     visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(40, 43, 54);
-    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, RED_DIM);
-    visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, Color32::WHITE);
+    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0_f32, RED_DIM);
+    visuals.widgets.hovered.fg_stroke = Stroke::new(1.0_f32, Color32::WHITE);
     visuals.widgets.hovered.corner_radius = radius;
 
     visuals.widgets.active.bg_fill = RED;
     visuals.widgets.active.weak_bg_fill = RED;
-    visuals.widgets.active.bg_stroke = Stroke::new(1.0, RED_HOVER);
-    visuals.widgets.active.fg_stroke = Stroke::new(1.0, Color32::WHITE);
+    visuals.widgets.active.bg_stroke = Stroke::new(1.0_f32, RED_HOVER);
+    visuals.widgets.active.fg_stroke = Stroke::new(1.0_f32, Color32::WHITE);
     visuals.widgets.active.corner_radius = radius;
 
     visuals.widgets.open.bg_fill = PANEL_HOVER;

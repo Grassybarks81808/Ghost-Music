@@ -161,13 +161,6 @@ impl Engine {
         }
     }
 
-    pub fn is_resolving(&self, key: &str) -> bool {
-        self.resolving
-            .lock()
-            .map(|set| set.contains(key))
-            .unwrap_or(false)
-    }
-
     pub fn push_command(&self, command: ApiCommand) {
         if let Ok(mut queue) = self.commands.lock() {
             queue.push_back(command);
@@ -507,16 +500,16 @@ fn pump(reader: &mut impl Read, tx: &Sender<JobUpdate>) {
         while let Some(cut) = pending.rfind(&['[', '\n'][..]) {
             let piece: String = pending.drain(..=cut).collect();
             if !piece.trim().is_empty() {
-                let _ = tx.send(JobUpdate::Log(piece));
+                let _ = tx.send(JobUpdate::DownloadLog(piece));
             }
         }
         if pending.len() > 400 {
             let piece = std::mem::take(&mut pending);
-            let _ = tx.send(JobUpdate::Log(piece));
+            let _ = tx.send(JobUpdate::DownloadLog(piece));
         }
     }
     if !pending.trim().is_empty() {
-        let _ = tx.send(JobUpdate::Log(pending));
+        let _ = tx.send(JobUpdate::DownloadLog(pending));
     }
 }
 
