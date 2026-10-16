@@ -189,6 +189,13 @@ jobs:
           HOW TO RUN
           1. Unzip this folder somewhere permanent (not inside the zip).
           2. Double-click Ghost-Music.exe.
+             The first start may show "Windows protected your PC" because the
+             build is not code-signed: click More info -> Run anyway.
+
+          HANDY FLAGS
+          Ghost-Music.exe --version    versions of the app, yt-dlp and ffmpeg
+          Ghost-Music.exe --selftest   headless check of the API and the tools
+          Ghost-Music.exe --api-only   run without a window (scripts, servers)
 
           MEDIA TOOLS
           - yt-dlp.exe is included in this folder; Ghost Music finds it next to the

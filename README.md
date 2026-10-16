@@ -14,6 +14,9 @@
 2. Unzip it anywhere (keep the folder together — `yt-dlp.exe` ships next to the app).
 3. Double-click **`Ghost-Music.exe`**. That's it.
 
+> **Windows SmartScreen**: the build is not code-signed, so the first launch may show
+> *"Windows protected your PC"* - click **More info → Run anyway**.
+>
 > `ffmpeg.exe` is optional but recommended: it enables MP3 conversion and HLS-only
 > tracks. Drop it next to `Ghost-Music.exe` ([build here](https://www.gyan.dev/ffmpeg/builds/)).
 
@@ -52,6 +55,7 @@ curl http://127.0.0.1:PORT/health
 curl "http://127.0.0.1:PORT/search?q=lofi+beats&limit=10"
 curl -X POST http://127.0.0.1:PORT/player/play -d '{"q":"lofi beats"}'      # search & play
 curl -X POST http://127.0.0.1:PORT/player/play -d '{"id":"dQw4w9WgXcQ"}'    # play a video id
+curl -X POST http://127.0.0.1:PORT/player/queue -d '{"q":"daft punk","next":true}'  # queue only
 curl -X POST http://127.0.0.1:PORT/player/pause
 curl -X POST http://127.0.0.1:PORT/player/seek  -d '{"seconds":42}'
 curl -X POST http://127.0.0.1:PORT/player/volume -d '{"volume":0.6}'

@@ -70,6 +70,8 @@ fn main() -> eframe::Result<()> {
         }
     }
 
+    hide_own_console();
+
     let icon = load_icon();
     let options = eframe::NativeOptions {
         viewport: {
@@ -95,6 +97,40 @@ fn main() -> eframe::Result<()> {
         }),
     )
 }
+
+/// Windows creates a console window for the process when the app is started by
+/// double-clicking, which makes a media player look unfinished. Hide it - but
+/// only when this process owns the console: when Ghost Music is started from an
+/// existing terminal the console is shared and `--version`/`--selftest` output
+/// must stay visible.
+#[cfg(windows)]
+fn hide_own_console() {
+    use std::ffi::c_void;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
+        fn GetConsoleWindow() -> *mut c_void;
+    }
+    #[link(name = "user32")]
+    extern "system" {
+        fn ShowWindow(window: *mut c_void, command: i32) -> i32;
+    }
+
+    const SW_HIDE: i32 = 0;
+
+    unsafe {
+        let mut owners = [0u32; 2];
+        let owners = GetConsoleProcessList(owners.as_mut_ptr(), owners.len() as u32);
+        let window = GetConsoleWindow();
+        if owners <= 1 && !window.is_null() {
+            ShowWindow(window, SW_HIDE);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn hide_own_console() {}
 
 /// Headless runs have no window, so nothing would ever call `publish_state`.
 /// Publishing an idle snapshot here keeps `GET /player/state` meaningful.
@@ -232,6 +268,17 @@ fn run_selftest(engine: Arc<Engine>, api: Option<Arc<http_api::ApiServer>>) -> e
             check("GET / (remote page)", status == 200, false, &format!("HTTP {status}"));
         }
         None => check("local API", false, false, "could not bind a loopback port"),
+    }
+
+    // Audio output (informational: CI machines have no sound card).
+    {
+        let probe = player::Player::new(0.8);
+        check(
+            "audio output device",
+            probe.is_available(),
+            true,
+            probe.error.as_deref().unwrap_or("ok"),
+        );
     }
 
     // Media tools.
