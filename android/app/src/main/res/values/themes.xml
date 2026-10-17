@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ghost_bg">#0B0B0E</color>
+    <color name="ghost_surface">#14141A</color>
+    <color name="ghost_text">#F4EEF1</color>
+    <color name="ghost_muted">#A79AA3</color>
+    <color name="ghost_accent">#FF5C74</color>
+
+    <style name="GhostTheme" parent="@android:style/Theme.Material">
+        <item name="android:windowActionBar">true</item>
+        <item name="android:windowBackground">@color/ghost_bg</item>
+        <item name="android:statusBarColor">@color/ghost_bg</item>
+        <item name="android:navigationBarColor">@color/ghost_bg</item>
+        <item name="android:colorAccent">@color/ghost_accent</item>
+        <item name="android:colorPrimary">@color/ghost_accent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

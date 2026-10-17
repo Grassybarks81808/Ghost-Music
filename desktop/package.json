@@ -1,0 +1,72 @@
+{
+  "name": "ghost-music",
+  "productName": "Ghost Music",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ghost Music — your music. Your other side.",
+  "author": "Ghost Music",
+  "main": "main.js",
+  "scripts": {
+    "dist": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.ghostmusic.desktop",
+    "productName": "Ghost Music",
+    "copyright": "Ghost Music",
+    "directories": {
+      "output": "../dist",
+      "buildResources": "../assets"
+    },
+    "files": [
+      "main.js",
+      "splash.html",
+      "icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../.desktop-build",
+        "to": "app"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "../assets/ghost-music.ico",
+      "artifactName": "GhostMusic-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ghost Music",
+      "installerIcon": "../assets/ghost-music.ico",
+      "uninstallerIcon": "../assets/ghost-music.ico"
+    },
+    "portable": {
+      "artifactName": "GhostMusic-${version}-portable.exe"
+    }
+  },
+  "allowScripts": {
+    "electron": true
+  }
+}

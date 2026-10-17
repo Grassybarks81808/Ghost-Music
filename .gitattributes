@@ -1,0 +1,13 @@
+# Normalise line endings so the shell scripts and generated files behave the
+# same on Windows, macOS, and Linux.
+* text=auto eol=lf
+
+# Generated media and binary build inputs: never rewrite these.
+*.png binary
+*.ico binary
+*.mp3 binary
+*.webmanifest text eol=lf
+*.jks binary
+
+# Keep verification and build scripts executable where the platform allows it.
+scripts/*.sh text eol=lf

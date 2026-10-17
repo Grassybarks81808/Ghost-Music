@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+desktop/node_modules/
+
+# Next.js build output
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Packaged build staging and installers (the release holds these, not git)
+.desktop-build/
+dist/
+build/
+*.blockmap
+
+# Local data: embedded library, extraction output, screenshots from test runs
+.ghost-library/
+.ghost-data/
+.ghost-downloads/
+artifacts/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Android build output and signing material — never commit these
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/local.properties
+android/keystore.properties
+android/*.jks
+android/*.keystore
+android/*.keystore.base64
+android/*.jks.base64
+
+# Generated build resources
+desktop/icon.png
+
+# Logs, caches, editor and OS noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.freebuff/

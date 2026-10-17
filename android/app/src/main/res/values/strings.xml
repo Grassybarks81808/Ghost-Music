@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ghost Music</string>
+    <string name="connect_title">Connect your ghost</string>
+    <string name="connect_body">Ghost Music Desktop keeps the library. Type the address it shows under Ghost Music → Connect a phone on this network.</string>
+    <string name="connect_hint">192.168.1.20:43110</string>
+    <string name="connect_action">Connect</string>
+    <string name="connect_checking">Looking for your library…</string>
+    <string name="connect_error">Could not reach Ghost Music at that address. Make sure the desktop app is running, phone connection is on, and both devices share the same Wi-Fi.</string>
+    <string name="settings">Server settings</string>
+    <string name="reload">Reload</string>
+</resources>
