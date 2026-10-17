@@ -1,6 +1,12 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "ghost-music",
   "private": true,
+  "description": "Your music. Your other side. A full-stack music app with Windows, Android, and web builds.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Grassybarks81808/Ghost-Music.git"
+  },
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
